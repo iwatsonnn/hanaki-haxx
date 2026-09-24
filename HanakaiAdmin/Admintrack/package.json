@@ -1,0 +1,15 @@
+{
+  "name": "haxxor",
+  "version": "1.0.0",
+  "main": "index.js",
+  "description": "Rust admin action logging bot",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.25.1",
+    "dotenv": "^17.2.3",
+    "ws": "^8.18.3"
+  }
+}

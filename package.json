@@ -1,0 +1,14 @@
+{
+  "name": "hanaki-bots",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Runs every Hanaki Discord bot with one command.",
+  "scripts": {
+    "start": "node start-all.mjs",
+    "list": "node start-all.mjs --list"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

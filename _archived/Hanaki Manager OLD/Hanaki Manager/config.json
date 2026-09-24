@@ -1,0 +1,70 @@
+{
+  "timezone": "UTC",
+  "colors": {
+    "primary": 5793266,
+    "success": 5763719,
+    "danger": 15548997,
+    "warning": 16705372
+  },
+  "welcomeChannelId": "1503429213280010444",
+  "rulesChannelId": "1503429215725551616",
+  "modLogChannelId": "1503429260608540905",
+  "prefix": "!",
+  "popChannelId": "1534982696525238437",
+  "messageLogChannelId": "",
+  "staffRoleIds": ["1503429087652216833"],
+  "welcome": {
+    "title": "Welcome to the server!",
+    "template": "Hey {user}, welcome to **{server}**! You're member **#{count}**. Have fun.",
+    "showRulesButton": true
+  },
+  "tickets": {
+    "categoryId": "1503429203457212457",
+    "logChannelId": "1522388636174385292",
+    "panelChannelId": "1503429220582555750",
+    "staffRoleIds": [
+      "1503429079276196054",
+      "1503429087652216833",
+      "1503429084687106048"
+    ],
+    "panelTitle": "Need help? Open a ticket",
+    "panelDescription": "Choose a category below to open a ticket. Our staff will assist you as soon as possible. Please write in detail what your problem is, and be patient while waiting for a response. Thank you!",
+    "categories": [
+      { "key": "general", "label": "General Support", "emoji": "🛠️" },
+      { "key": "report", "label": "Player Report", "emoji": "🚨" },
+      { "key": "store", "label": "Store / Billing", "emoji": "💰" },
+      { "key": "zorp", "label": "ZORP Questions", "emoji": "🛡️" }
+    ]
+  },
+  "links": {
+    "enabled": true,
+    "ignoreStaff": true,
+    "deleteMessage": true,
+    "warnUser": true,
+    "exemptChannelIds": []
+  },
+  "wipe": {
+    "announceChannelId": "1503429228513853630",
+    "connect": "Hanaki 2x Solo/Duo Vanilla+",
+    "bannerUrl": "",
+    "roleToPingId": "1503429094635737170",
+    "reminderOffsets": [3600, 600]
+  },
+  "blacklist": {
+    "matchMode": "word",
+    "ignoreStaff": true,
+    "deleteMessage": true,
+    "warnUser": true,
+    "autoTimeoutAfter": 3,
+    "autoTimeoutMs": 600000
+  },
+  "moderation": {
+    "warnAutoTimeoutAt": 3,
+    "warnAutoTimeoutMs": 3600000
+  },
+  "messageLog": {
+    "logDeletes": true,
+    "logEdits": true,
+    "ignoreBots": true
+  }
+}

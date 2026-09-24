@@ -1,0 +1,23 @@
+# Dependencies — reinstall with `npm install` in each bot folder.
+node_modules/
+
+# Secrets. Bot tokens and RCON passwords live here. Never commit.
+.env
+.env.*
+!.env.example
+
+# Runtime state written by the bots (tickets, warnings, blacklists).
+# These change constantly and can contain Discord user IDs.
+src/data/*.json
+**/src/data/*.json
+!**/src/data/.gitkeep
+data/adminlogs/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini

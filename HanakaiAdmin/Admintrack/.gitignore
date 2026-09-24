@@ -1,0 +1,7 @@
+node_modules/
+
+# Secrets — bot token and RCON passwords live here.
+.env
+
+# Audit trail. Local record, not source; may contain player names/SteamIDs.
+data/adminlogs/
