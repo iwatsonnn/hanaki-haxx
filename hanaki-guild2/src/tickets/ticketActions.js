@@ -16,6 +16,7 @@ import { config } from '../config.js';
 import { read, update } from '../lib/store.js';
 import { container, td, separator, simple, ephemeral, CV2_FLAG } from '../lib/cv2.js';
 import { discordTime } from '../lib/timeParse.js';
+import { logAction } from '../lib/modlog.js';
 import { buildTranscript } from './transcript.js';
 
 const STORE = 'tickets';
@@ -429,6 +430,51 @@ async function finalizeClose(interaction, channel, ticket, reason) {
   setTimeout(() => channel.delete(`Ticket closed by ${interaction.user.tag}: ${reason}`).catch(() => {}), 5000);
 }
 
+/**
+ * The confirm button on /ticket purge.
+ *
+ * The reply is edited to a "working" state first: deleting many channels takes
+ * well past the 3s interaction window, and this also disarms the button so a
+ * second click cannot start a concurrent purge.
+ */
+async function confirmPurge(interaction, scope) {
+  if (!isStaff(interaction.member)) {
+    return interaction.reply(
+      ephemeral(simple({ accent: config.colors.danger, lines: ['Only staff can purge tickets.'] })),
+    );
+  }
+
+  await interaction.update(
+    simple({ accent: config.colors.warning, lines: ['🗑️ Purging tickets…'] }),
+  );
+
+  const { deleted, cleared, failed } = await purgeTickets(
+    interaction.guild,
+    scope === 'all' ? 'all' : 'closed',
+    interaction.user,
+  );
+
+  const lines = [
+    '## 🗑️ Ticket purge complete',
+    `**Channels deleted:** ${deleted}`,
+    `**Records cleared:** ${cleared}`,
+  ];
+  if (failed.length) {
+    lines.push(`⚠️ **Failed to delete ${failed.length}:** ${failed.slice(0, 10).join(', ')}`);
+  }
+
+  await interaction.editReply(simple({ accent: config.colors.success, lines }));
+
+  return logAction(interaction.guild, {
+    action: 'Ticket purge',
+    emoji: '🗑️',
+    moderator: interaction.user,
+    reason: scope === 'all' ? 'Purged all tickets' : 'Purged closed tickets',
+    extra: [`**Channels deleted:** ${deleted}`, `**Records cleared:** ${cleared}`],
+    color: config.colors.danger,
+  });
+}
+
 async function sendTranscript(interaction) {
   const channel = interaction.channel;
   const ticket = resolveTicket(channel);
@@ -443,6 +489,89 @@ async function sendTranscript(interaction) {
     return interaction.editReply(simple({ accent: config.colors.danger, lines: ['Failed to generate transcript.'] }));
   }
   return interaction.editReply(transcriptPayload(config.colors.primary, ['📄 Transcript attached.'], attachment));
+}
+
+// --- /ticket purge ------------------------------------------------------------
+//
+// Purging deletes ticket CHANNELS and drops their stored records. Transcripts
+// already delivered to the log channel are untouched, so the audit trail of
+// what was said survives even though the channel does not.
+
+/**
+ * Every channel in the ticket category, whether or not the store knows it.
+ *
+ * Orphans matter here: a channel created by an older copy of this bot has no
+ * record, and a purge that only walked the store would leave it behind forever.
+ */
+function ticketChannels(guild) {
+  const categoryId = config.tickets.categoryId;
+  if (!categoryId) return [];
+  return [...guild.channels.cache.values()].filter(
+    (ch) => ch.parentId === categoryId && ch.type === ChannelType.GuildText,
+  );
+}
+
+function isClosed(ticket) {
+  // An unknown channel (no record at all) counts as closed: nobody is tracking
+  // it, so it cannot be an active conversation anyone is waiting on.
+  return !ticket || ticket.status !== 'open';
+}
+
+function selectForPurge(guild, scope) {
+  const byId = new Map(loadTickets().map((t) => [t.channelId, t]));
+  const channels = ticketChannels(guild).filter(
+    (ch) => scope === 'all' || isClosed(byId.get(ch.id)),
+  );
+
+  const channelIds = new Set(channels.map((ch) => ch.id));
+  // Records whose channel is already gone are cleared too — that is the
+  // leftover state a purge is meant to tidy up.
+  const records = loadTickets().filter((t) => {
+    if (t.guildId !== guild.id) return false;
+    if (channelIds.has(t.channelId)) return true;
+    const gone = !guild.channels.cache.has(t.channelId);
+    return gone && (scope === 'all' || isClosed(t));
+  });
+
+  return { channels, records };
+}
+
+export function countPurgeable(guild, scope) {
+  const { channels, records } = selectForPurge(guild, scope);
+  return { channels: channels.length, records: records.length };
+}
+
+/**
+ * Delete the selected channels and drop their records.
+ *
+ * Channels are deleted one at a time rather than in parallel: Discord rate
+ * limits channel deletion hard, and a burst of 50 gets throttled into failures.
+ */
+export async function purgeTickets(guild, scope, byUser) {
+  const { channels, records } = selectForPurge(guild, scope);
+
+  let deleted = 0;
+  const failed = [];
+  for (const channel of channels) {
+    try {
+      await channel.delete(`Ticket purge by ${byUser.tag}`);
+      deleted += 1;
+    } catch (err) {
+      console.error(`[tickets] purge: failed to delete #${channel.name}:`, err);
+      failed.push(channel.name);
+    }
+  }
+
+  const purgedIds = new Set(records.map((t) => t.channelId));
+  let cleared = 0;
+  update(STORE, [], (list) => {
+    const tickets = Array.isArray(list) ? list : [];
+    const next = tickets.filter((t) => !(t.guildId === guild.id && purgedIds.has(t.channelId)));
+    cleared = tickets.length - next.length;
+    return next;
+  });
+
+  return { deleted, cleared, failed };
 }
 
 export { isStaff, findByChannel };
@@ -503,6 +632,12 @@ export async function handleTicketButton(interaction) {
       return openCloseModal(interaction);
     case 'transcript':
       return sendTranscript(interaction);
+    case 'purge':
+      return confirmPurge(interaction, arg);
+    case 'purge-cancel':
+      return interaction.update(
+        simple({ accent: config.colors.primary, lines: ['Purge cancelled. Nothing was deleted.'] }),
+      );
     default:
       return undefined;
   }

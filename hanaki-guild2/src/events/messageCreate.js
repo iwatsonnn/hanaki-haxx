@@ -6,6 +6,7 @@ import { logAction } from '../lib/modlog.js';
 import { simple, payload, td } from '../lib/cv2.js';
 import { formatDuration } from '../lib/timeParse.js';
 import { handleAutoTranslate } from '../lib/autoTranslate.js';
+import { findSlur } from '../lib/slurs.js';
 
 export const name = 'messageCreate';
 
@@ -30,6 +31,43 @@ async function handlePop(message) {
     .catch((err) => console.error('[pop] send failed:', err));
 }
 
+/**
+ * A racial slur was used: remove it, tell the author, and log it.
+ *
+ * The notice deletes itself after 5s so the channel is not left with a
+ * permanent record of the incident — the modlog entry is the lasting one.
+ *
+ * Staff are NOT exempt here, unlike the configurable blacklist: this list
+ * cannot be edited at runtime, so there is no reason to grant a pass on it.
+ */
+async function handleSlur(message, slur) {
+  const { author, channel, guild } = message;
+
+  await message.delete().catch(() => {});
+
+  const notice = await channel
+    .send({
+      ...simple({
+        accent: config.colors.danger,
+        lines: [`🚫 <@${author.id}>, you have been blocked by the bot for using a racial slur.`],
+      }),
+      allowedMentions: { users: [author.id] },
+    })
+    .catch(() => null);
+
+  if (notice) setTimeout(() => notice.delete().catch(() => {}), 5000);
+
+  await logAction(guild, {
+    action: 'Racial slur',
+    emoji: '🚫',
+    moderator: message.client.user,
+    target: author,
+    reason: 'Used a racial slur',
+    extra: [`**Channel:** <#${channel.id}>`, `**Matched:** \`${slur}\``],
+    color: config.colors.danger,
+  });
+}
+
 export async function execute(message) {
   if (!message.inGuild() || message.author.bot || message.system) return;
 
@@ -48,6 +86,10 @@ export async function execute(message) {
     }
 
   }
+
+  // Racial slurs are handled first and separately from the blacklist below.
+  const slur = findSlur(message.content);
+  if (slur) return handleSlur(message, slur);
 
   const staffExempt =
     config.blacklist.ignoreStaff !== false &&
