@@ -10,7 +10,16 @@
   "rulesChannelId": "1470851318699659367",
   "modLogChannelId": "1481370139088781423",
   "prefix": "!",
-  "popChannelId": "1474380874408530121",
+  "popChannels": [
+    {
+      "label": "Hanaki 2X | 4 MAN",
+      "channelId": "1474380874408530121"
+    },
+    {
+      "label": "Hanaki 2X | DUO",
+      "channelId": ""
+    }
+  ],
   "messageLogChannelId": "",
   "staffRoleIds": [
     "1481437074870632662"
@@ -57,6 +66,10 @@
       {
         "key": "2x4man",
         "label": "Hanaki 2X | 4 MAN"
+      },
+      {
+        "key": "2xduo",
+        "label": "Hanaki 2X | DUO"
       }
     ],
     "formNotice": "This form will be submitted to Hanaki Manager. Do not share passwords or other sensitive information.",

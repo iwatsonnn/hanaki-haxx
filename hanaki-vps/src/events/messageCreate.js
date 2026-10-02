@@ -10,21 +10,30 @@ import { findSlur } from '../lib/slurs.js';
 
 export const name = 'messageCreate';
 
-async function handlePop(message) {
-  const id = config.popChannelId;
-  if (!id) return;
-  const channel = message.guild.channels.cache.get(id) ?? (await message.guild.channels.fetch(id).catch(() => null));
-  if (!channel) {
-    return message.channel
-      .send(simple({ accent: config.colors.danger, lines: ['⚠️ Population channel is not set up correctly (`popChannelId`).'] }))
-      .catch(() => {});
-  }
+// One entry per server. Falls back to the old single `popChannelId` setting.
+function popChannels() {
+  if (Array.isArray(config.popChannels)) return config.popChannels.filter((p) => p.channelId);
+  return config.popChannelId ? [{ label: null, channelId: config.popChannelId }] : [];
+}
 
-  const nums = (channel.name.match(/\d+/g) || []).map(Number);
+function popLine(name) {
+  const nums = (name.match(/\d+/g) || []).map(Number);
+  if (nums.length >= 2) return `🌐 **${nums[0]}** online   •   ⏰ **${nums[1]}** in queue`;
+  if (nums.length === 1) return `🌐 **${nums[0]}** online`;
+  return `\`${name}\``;
+}
+
+async function handlePop(message) {
+  const entries = popChannels();
+  if (!entries.length) return;
+
   const lines = ['## 🌐 Server Population'];
-  if (nums.length >= 2) lines.push(`🌐 **${nums[0]}** online   •   ⏰ **${nums[1]}** in queue`);
-  else if (nums.length === 1) lines.push(`🌐 **${nums[0]}** online`);
-  else lines.push(`\`${channel.name}\``);
+  for (const { label, channelId } of entries) {
+    const channel =
+      message.guild.channels.cache.get(channelId) ?? (await message.guild.channels.fetch(channelId).catch(() => null));
+    if (label) lines.push(`### ${label}`);
+    lines.push(channel ? popLine(channel.name) : '⚠️ Population channel is not set up correctly.');
+  }
 
   return message.channel
     .send(simple({ accent: config.colors.primary, lines }))
